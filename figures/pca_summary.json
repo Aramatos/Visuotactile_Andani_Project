@@ -1,0 +1,9 @@
+{
+  "exp": "NPBN",
+  "n_units": 61,
+  "seconds": 300.0,
+  "n95_real": 38,
+  "n95_null": 41,
+  "pr_real": 2.8,
+  "pr_null": 11.1
+}
