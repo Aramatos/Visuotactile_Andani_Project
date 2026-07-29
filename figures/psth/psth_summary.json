@@ -1,0 +1,78 @@
+{
+  "bin_ms": 2.0,
+  "pre_ms": 300.0,
+  "post_ms": 300.0,
+  "n_sd": 3.0,
+  "min_bins": 10,
+  "quality": [
+    "good",
+    "mua"
+  ],
+  "sessions": {
+    "NPBI": {
+      "modality": "visual patterns + visuo-tactile",
+      "n_units": 1449,
+      "n_classes": 8,
+      "n_pairs": 11592,
+      "n_pairs_flagged": 863,
+      "n_pairs_untestable": 672,
+      "n_units_flagged": 457,
+      "flagged_pct_good": 2.1,
+      "flagged_pct_mua": 7.7,
+      "detail_figures": 32,
+      "mua_detail_skipped": 425
+    },
+    "NPBK": {
+      "modality": "visual patterns",
+      "n_units": 1764,
+      "n_classes": 4,
+      "n_pairs": 7056,
+      "n_pairs_flagged": 160,
+      "n_pairs_untestable": 4033,
+      "n_units_flagged": 119,
+      "flagged_pct_good": 5.6,
+      "flagged_pct_mua": 2.2,
+      "detail_figures": 28,
+      "mua_detail_skipped": 91
+    },
+    "NPBM": {
+      "modality": "tactile patterns and visual patterns",
+      "n_units": 1494,
+      "n_classes": 8,
+      "n_pairs": 11952,
+      "n_pairs_flagged": 1514,
+      "n_pairs_untestable": 4341,
+      "n_units_flagged": 708,
+      "flagged_pct_good": 16.3,
+      "flagged_pct_mua": 12.5,
+      "detail_figures": 60,
+      "mua_detail_skipped": 648
+    },
+    "NPBN": {
+      "modality": "tactile patterns",
+      "n_units": 1052,
+      "n_classes": 4,
+      "n_pairs": 4208,
+      "n_pairs_flagged": 525,
+      "n_pairs_untestable": 1316,
+      "n_units_flagged": 317,
+      "flagged_pct_good": 18.9,
+      "flagged_pct_mua": 12.1,
+      "detail_figures": 46,
+      "mua_detail_skipped": 271
+    },
+    "NPBO": {
+      "modality": "tactile patterns",
+      "n_units": 1354,
+      "n_classes": 4,
+      "n_pairs": 5416,
+      "n_pairs_flagged": 736,
+      "n_pairs_untestable": 1923,
+      "n_units_flagged": 382,
+      "flagged_pct_good": 24.3,
+      "flagged_pct_mua": 13.3,
+      "detail_figures": 36,
+      "mua_detail_skipped": 346
+    }
+  }
+}

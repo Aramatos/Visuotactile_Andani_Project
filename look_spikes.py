@@ -9,6 +9,7 @@ from sklearn.decomposition import PCA
 # open an nwb file and grab the units and the stimulus trials
 with NWBHDF5IO("nwb/NPBK.nwb", "r") as io:
     nwb = io.read()
+    print(nwb.units)
     units = nwb.units.to_dataframe()
     trials = nwb.trials.to_dataframe()
 
@@ -21,6 +22,8 @@ offset = onset + first["duration_s"]
 pre = 0.3
 post = 0.3
 
+# get the good units
+units = units[units["quality"] == "good"]
 
 # raster: one row of ticks per unit, lined up to the stimulus onset
 fig, ax = plt.subplots(figsize=(10, 7))
