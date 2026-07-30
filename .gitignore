@@ -1,2 +1,4 @@
 *.nwb
 *.png
+*.npz
+*.npy
