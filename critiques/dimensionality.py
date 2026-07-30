@@ -7,26 +7,34 @@
                  is 62-81% of all available PCs. It reads that as an extremely
                  high-dimensional state space.
 
-  THE WEAKNESS   That count is large whenever the eigenvalue spectrum is FLAT, and
-                 independent noise produces a flat spectrum. At 1 ms bins with
-                 neurons firing a few Hz, nearly every bin is empty, so flat is
-                 the default expectation rather than a finding.
+  THE WEAKNESS   That count is large whenever the eigenvalue spectrum is FLAT,
+                 and independent noise produces a flat spectrum. At 1 ms bins
+                 with neurons firing a few Hz nearly every bin is empty, so flat
+                 is the default expectation rather than a finding.
 
   THE TEST       Destroy all between-neuron structure while keeping each neuron
-                 exactly as active as it was, then recount. Step 2 below shows
-                 precisely what that shuffle does.
+                 exactly as active as it was, then recount. STEP 2 shows
+                 precisely what that shuffle does and checks that it did it.
 
   THE BETTER     Participation ratio, PR = (sum of eigenvalues)^2 / sum of
   METRIC         eigenvalues^2, which answers to the shape of the whole spectrum
                  instead of one cutoff. Flat -> PR near the neuron count.
                  Concentrated -> PR small.
 
-  WHY NPBI IS    Its visuo-tactile onsets are about 243 ms late, so its
-  NOT HERE       "pre-stimulus" windows contain stimulus-driven activity. It
-                 cannot measure spontaneous anything.
+  THE HONEST     There IS population structure, and it is LOW-dimensional, not
+  NUMBER         high. At raw 1 ms the real data is indistinguishable from the
+                 shuffle on both metrics. Under their own preprocessing the PR
+                 separates sharply (NPBN: 5.2 real vs 16.7 shuffled), so the
+                 structure that exists is slow enough to survive averaging 50
+                 sequential trials. That is roughly 5-15 dimensions, not 42, and
+                 being slow it is the same structure critique D calls drift.
 
-Steps 1-9 walk through NPBN, one cell at a time. Then NPBK, NPBM and NPBO each get
-their own cell so the four can be compared.
+  WHY NPBI IS    Its onsets are about 243 ms late, so its "pre-stimulus" windows
+  NOT HERE       contain stimulus-driven activity. It cannot measure spontaneous
+                 anything. See CLAUDE.md.
+
+Steps 1-9 walk through NPBN one cell at a time. Then NPBK, NPBM and NPBO each get
+their own cell, spelled out the same way, so each session has its own story.
 """
 
 # %% [ STEP 0 ] settings
@@ -52,7 +60,10 @@ os.makedirs(OUT_DIR, exist_ok=True)
 rng = np.random.default_rng(0)
 
 
-# %% [ STEP 0b ] the four operations, each one thing
+# %% [ STEP 0b ] the four operations
+#
+# Each one does a single thing and calls none of the others, so any of them can
+# be run on its own and its output looked at. Nothing below hides a step.
 
 
 def load_spontaneous(exp):
@@ -160,8 +171,9 @@ print("spectrum is what you should expect before looking.")
 
 # %% [ STEP 2 ] NPBN: what the shuffle actually does
 #
-# Before trusting the shuffle as a null, check that it preserves what it claims to
-# preserve and destroys what it claims to destroy.
+# Before trusting the shuffle as a null, check that it preserves what it claims
+# to preserve and destroys what it claims to destroy. Every line here is one
+# step, so each intermediate can be looked at.
 
 npbn_shuffled_once = shuffle_neurons_apart(npbn)
 
@@ -169,7 +181,6 @@ spikes_before = npbn.sum(axis=(0, 2))              # per neuron, whole session
 spikes_after = npbn_shuffled_once.sum(axis=(0, 2))
 counts_identical = np.array_equal(spikes_before, spikes_after)
 
-# pairwise correlation between neurons, at 1 ms, before and after
 matrix_before = build_matrix(npbn, bin_ms=1, paper_pipeline=False)
 matrix_after = build_matrix(npbn_shuffled_once, bin_ms=1, paper_pipeline=False)
 
@@ -177,11 +188,12 @@ correlation_before = np.corrcoef(matrix_before, rowvar=False)
 correlation_after = np.corrcoef(matrix_after, rowvar=False)
 off_diagonal = ~np.eye(n_neurons, dtype=bool)
 
+mean_correlation_before = np.abs(correlation_before[off_diagonal]).mean()
+mean_correlation_after = np.abs(correlation_after[off_diagonal]).mean()
+
 print(f"every neuron's spike count unchanged by the shuffle: {counts_identical}")
-print(f"mean |correlation| between neuron pairs, real     : "
-      f"{np.abs(correlation_before[off_diagonal]).mean():.4f}")
-print(f"mean |correlation| between neuron pairs, shuffled : "
-      f"{np.abs(correlation_after[off_diagonal]).mean():.4f}")
+print(f"mean |correlation| between neuron pairs, real     : {mean_correlation_before:.4f}")
+print(f"mean |correlation| between neuron pairs, shuffled : {mean_correlation_after:.4f}")
 print("\nSo: same neurons, same rates, same bursting, coordination removed.")
 
 
@@ -199,20 +211,23 @@ print("question is what the number means.")
 
 # %% [ STEP 4 ] NPBN: the same number, on data with no coordination left
 
-shuffled_pc95 = []
-shuffled_pr = []
-shuffled_top = []
+npbn_shuffled_pc95 = []
+npbn_shuffled_pr = []
+npbn_shuffled_top = []
 for repeat in range(N_SHUFFLE):
     shuffled_counts = shuffle_neurons_apart(npbn)
     shuffled_matrix = build_matrix(shuffled_counts, bin_ms=1, paper_pipeline=True)
     pc95, pr, top = dimensions(shuffled_matrix)
-    shuffled_pc95.append(pc95)
-    shuffled_pr.append(pr)
-    shuffled_top.append(top)
+    npbn_shuffled_pc95.append(pc95)
+    npbn_shuffled_pr.append(pr)
+    npbn_shuffled_top.append(top)
+
+mean_shuffled_pc95 = np.mean(npbn_shuffled_pc95)
+sd_shuffled_pc95 = np.std(npbn_shuffled_pc95)
 
 print(f"real data            : {paper_pc95} PCs for 95%")
-print(f"rate-matched shuffle : {np.mean(shuffled_pc95):.1f} PCs for 95% "
-      f"(SD {np.std(shuffled_pc95):.1f} over {N_SHUFFLE} shuffles)")
+print(f"rate-matched shuffle : {mean_shuffled_pc95:.1f} PCs for 95% "
+      f"(SD {sd_shuffled_pc95:.1f} over {N_SHUFFLE} shuffles)")
 print("\nThe shuffle has no between-neuron structure at all. If it needs about as")
 print("many PCs as the real data, the count is not measuring population")
 print("structure. That is the argument, in one comparison.")
@@ -220,13 +235,15 @@ print("structure. That is the argument, in one comparison.")
 
 # %% [ STEP 5 ] NPBN: the same question, with a metric that can answer it
 
+mean_shuffled_pr = np.mean(npbn_shuffled_pr)
+
 print(f"participation ratio, real     : {paper_pr:.1f}")
-print(f"participation ratio, shuffle  : {np.mean(shuffled_pr):.1f}")
+print(f"participation ratio, shuffle  : {mean_shuffled_pr:.1f}")
 print(f"neurons in the session        : {n_neurons}")
 print(f"top PC holds {100 * paper_top:.1f}% of the variance in the real data")
-print("\nPR(real) well below PR(shuffle) would mean the real spectrum IS")
-print("concentrated, so structure exists and the 95% cutoff simply could not see")
-print("it. Step 6 checks whether that gap is real or manufactured.")
+print("\nPR(real) well below PR(shuffle) means the real spectrum IS concentrated,")
+print("so structure exists and the 95% cutoff simply could not see it. STEP 6")
+print("checks whether that gap is real or manufactured by their preprocessing.")
 
 
 # %% [ STEP 6 ] NPBN: is the gap there without their preprocessing?
@@ -236,25 +253,33 @@ print("it. Step 6 checks whether that gap is real or manufactured.")
 # whatever is independent across trials, smoothing correlates neighbouring
 # samples. So run the same real-vs-shuffle comparison with those steps switched
 # OFF, and see whether the PR gap survives.
+#
+# Their own Methods describe the PCA as fitted to "800 or 1600 times 300 data
+# points", which is the UNaveraged count -- so the raw row is arguably the one
+# that matches what they say they did.
 
 npbn_raw_matrix = build_matrix(npbn, bin_ms=1, paper_pipeline=False)
 raw_pc95, raw_pr, raw_top = dimensions(npbn_raw_matrix)
 
-raw_shuffled_pr = []
+npbn_raw_shuffled_pr = []
 for repeat in range(N_SHUFFLE):
     shuffled_counts = shuffle_neurons_apart(npbn)
     shuffled_matrix = build_matrix(shuffled_counts, bin_ms=1, paper_pipeline=False)
     pc95, pr, top = dimensions(shuffled_matrix)
-    raw_shuffled_pr.append(pr)
+    npbn_raw_shuffled_pr.append(pr)
+
+mean_raw_shuffled_pr = np.mean(npbn_raw_shuffled_pr)
+raw_gap = raw_pr - mean_raw_shuffled_pr
+paper_gap = paper_pr - mean_shuffled_pr
 
 print(f"{'':30} {'PR real':>8} {'PR shuffled':>12} {'gap':>6}")
-print(f"{'raw 1 ms, nothing done':30} {raw_pr:8.1f} "
-      f"{np.mean(raw_shuffled_pr):12.1f} {raw_pr - np.mean(raw_shuffled_pr):6.1f}")
-print(f"{'their averaging + smoothing':30} {paper_pr:8.1f} "
-      f"{np.mean(shuffled_pr):12.1f} {paper_pr - np.mean(shuffled_pr):6.1f}")
-print("\nIf the gap is near zero raw and only opens after their preprocessing,")
-print("then the 'structure' is something the pipeline created, and the honest")
-print("statement is the raw one.")
+print(f"{'raw 1 ms, nothing done':30} {raw_pr:8.1f} {mean_raw_shuffled_pr:12.1f} {raw_gap:6.1f}")
+print(f"{'their averaging + smoothing':30} {paper_pr:8.1f} {mean_shuffled_pr:12.1f} {paper_gap:6.1f}")
+print("\nThe raw gap near zero says there is no fast (1 ms) coordination to find.")
+print("The large gap after 50-trial averaging says the structure that does exist")
+print("is SLOW -- it survives averaging 50 sequential trials, which is exactly")
+print("what a drifting session looks like. Either way it is low-dimensional, and")
+print("neither reading supports 'extremely high-dimensional'.")
 
 
 # %% [ STEP 7 ] NPBN: their Fig 1F, with the shuffle drawn on it
@@ -269,8 +294,7 @@ for bin_ms in BIN_MS_LIST:
     real_pc95, real_pr, real_top = dimensions(real_matrix)
 
     shuffled_counts = shuffle_neurons_apart(npbn)
-    shuffled_matrix = build_matrix(shuffled_counts, bin_ms=bin_ms,
-                                   paper_pipeline=True)
+    shuffled_matrix = build_matrix(shuffled_counts, bin_ms=bin_ms, paper_pipeline=True)
     shuf_pc95, shuf_pr, shuf_top = dimensions(shuffled_matrix)
 
     sweep_rows.append({"bin_ms": bin_ms,
@@ -297,11 +321,13 @@ for take in [10, 20, 30, n_neurons]:
         pc95_samples.append(pc95)
         pr_samples.append(pr)
 
+    mean_pc95 = np.mean(pc95_samples)
+    mean_pr = np.mean(pr_samples)
     neuron_rows.append({"neurons": take,
-                        "pc95": np.mean(pc95_samples),
-                        "pr": np.mean(pr_samples),
-                        "pc95_per_neuron": np.mean(pc95_samples) / take,
-                        "pr_per_neuron": np.mean(pr_samples) / take})
+                        "pc95": mean_pc95,
+                        "pr": mean_pr,
+                        "pc95_per_neuron": mean_pc95 / take,
+                        "pr_per_neuron": mean_pr / take})
 
 npbn_curve = pd.DataFrame(neuron_rows)
 print(npbn_curve.round(2).to_string(index=False))
@@ -309,27 +335,38 @@ print("\nIf pc95_per_neuron stays flat as neurons are added, then '62-81% of")
 print("available PCs' is a statement about the size of the recording.")
 
 
-# %% [ STEP 9 ] NPBN: the figure
+# %% [ STEP 9a ] NPBN: the two cumulative-variance curves the figure needs
+#
+# Computed here, in the open, rather than inside the plotting function. The plot
+# below receives finished arrays and does no arithmetic of its own.
+
+pca_real = PCA()
+pca_real.fit(npbn_raw_matrix)
+cumulative_real = 100 * np.cumsum(pca_real.explained_variance_ratio_)
+
+npbn_shuffled_for_figure = shuffle_neurons_apart(npbn)
+matrix_shuffled_for_figure = build_matrix(npbn_shuffled_for_figure, bin_ms=1,
+                                          paper_pipeline=False)
+pca_shuffled = PCA()
+pca_shuffled.fit(matrix_shuffled_for_figure)
+cumulative_shuffled = 100 * np.cumsum(pca_shuffled.explained_variance_ratio_)
+
+print(f"real     reaches 95% at PC {np.searchsorted(cumulative_real, 95) + 1}")
+print(f"shuffled reaches 95% at PC {np.searchsorted(cumulative_shuffled, 95) + 1}")
 
 
-def plot_the_argument(real_counts, name, sweep, curve, path):
-    """Three panels: the spectrum, the bin-width collapse, the neuron-count curve."""
+# %% [ STEP 9b ] NPBN: the figure
+
+
+def plot_the_argument(cum_real, cum_shuffled, sweep, curve, name, path):
+    """Three panels, drawn from finished arrays. No computation happens here."""
     fig, axes = plt.subplots(1, 3, figsize=(14, 4.6))
 
     ax = axes[0]
-    real_matrix = build_matrix(real_counts, bin_ms=1, paper_pipeline=False)
-    shuffled_counts = shuffle_neurons_apart(real_counts)
-    shuffled_matrix = build_matrix(shuffled_counts, bin_ms=1, paper_pipeline=False)
-
-    for matrix, colour, style, tag in ((real_matrix, "#2c3e50", "-", "real"),
-                                       (shuffled_matrix, "#c0392b", "--",
-                                        "rate-matched shuffle")):
-        pca = PCA()
-        pca.fit(matrix)
-        cumulative = 100 * np.cumsum(pca.explained_variance_ratio_)
-        ax.plot(np.arange(1, len(cumulative) + 1), cumulative, color=colour,
-                ls=style, lw=1.6, label=tag)
-
+    ax.plot(np.arange(1, len(cum_real) + 1), cum_real, color="#2c3e50", ls="-",
+            lw=1.6, label="real")
+    ax.plot(np.arange(1, len(cum_shuffled) + 1), cum_shuffled, color="#c0392b",
+            ls="--", lw=1.6, label="rate-matched shuffle")
     ax.axhline(95, color="#7b8794", lw=0.8, ls=":")
     ax.text(1, 96, "95% cutoff", fontsize=8, color="#7b8794")
     ax.set_xlabel("number of PCs")
@@ -371,73 +408,173 @@ def plot_the_argument(real_counts, name, sweep, curve, path):
     return path
 
 
-figure_path = plot_the_argument(npbn, "NPBN", npbn_sweep, npbn_curve,
-                               f"{OUT_DIR}/dimensionality_NPBN.png")
+figure_path = plot_the_argument(cumulative_real, cumulative_shuffled, npbn_sweep,
+                                npbn_curve, "NPBN",
+                                f"{OUT_DIR}/dimensionality_NPBN.png")
 print(f"wrote {figure_path}")
 
 
 # %% [ THE SAME STEPS, ONE CELL PER SESSION ]
-
-
-def one_session_story(counts, name):
-    """Steps 3 to 6 for one session, as a one-row summary."""
-    paper_matrix = build_matrix(counts, bin_ms=1, paper_pipeline=True)
-    paper_pc95, paper_pr, paper_top = dimensions(paper_matrix)
-
-    raw_matrix = build_matrix(counts, bin_ms=1, paper_pipeline=False)
-    raw_pc95, raw_pr, raw_top = dimensions(raw_matrix)
-
-    paper_shuffled_pc95 = []
-    paper_shuffled_pr = []
-    raw_shuffled_pr = []
-    for repeat in range(N_SHUFFLE):
-        shuffled_counts = shuffle_neurons_apart(counts)
-
-        shuffled_paper = build_matrix(shuffled_counts, bin_ms=1, paper_pipeline=True)
-        pc95, pr, top = dimensions(shuffled_paper)
-        paper_shuffled_pc95.append(pc95)
-        paper_shuffled_pr.append(pr)
-
-        shuffled_raw = build_matrix(shuffled_counts, bin_ms=1, paper_pipeline=False)
-        pc95, pr, top = dimensions(shuffled_raw)
-        raw_shuffled_pr.append(pr)
-
-    return pd.Series({
-        "session": name,
-        "neurons": counts.shape[1],
-        "rate_hz": round(1000 * counts.mean(), 2),
-        "pc95_real": paper_pc95,
-        "pc95_shuffled": round(np.mean(paper_shuffled_pc95), 1),
-        "pc95_pct_of_neurons": round(100 * paper_pc95 / counts.shape[1]),
-        "pr_real": round(paper_pr, 1),
-        "pr_shuffled": round(np.mean(paper_shuffled_pr), 1),
-        "pr_raw_real": round(raw_pr, 1),
-        "pr_raw_shuffled": round(np.mean(raw_shuffled_pr), 1),
-    })
+#
+# Each cell below is STEPS 3 to 6 written out for one session: reproduce their
+# number, shuffle it, and check whether the PR gap needs their preprocessing.
+# Written out rather than looped so each session's numbers can be looked at on
+# their own.
 
 
 # %% NPBN's row (walked through above)
 
-story_npbn = one_session_story(npbn, "NPBN")
+npbn_raw_matrix = build_matrix(npbn, bin_ms=1, paper_pipeline=False)
+npbn_raw_pc95, npbn_raw_pr, npbn_raw_top = dimensions(npbn_raw_matrix)
+
+npbn_paper_matrix = build_matrix(npbn, bin_ms=1, paper_pipeline=True)
+npbn_paper_pc95, npbn_paper_pr, npbn_paper_top = dimensions(npbn_paper_matrix)
+
+npbn_null_paper_pc95 = []
+npbn_null_paper_pr = []
+npbn_null_raw_pr = []
+for repeat in range(N_SHUFFLE):
+    shuffled_counts = shuffle_neurons_apart(npbn)
+    shuffled_paper_matrix = build_matrix(shuffled_counts, bin_ms=1, paper_pipeline=True)
+    pc95, pr, top = dimensions(shuffled_paper_matrix)
+    npbn_null_paper_pc95.append(pc95)
+    npbn_null_paper_pr.append(pr)
+
+    shuffled_raw_matrix = build_matrix(shuffled_counts, bin_ms=1, paper_pipeline=False)
+    pc95, pr, top = dimensions(shuffled_raw_matrix)
+    npbn_null_raw_pr.append(pr)
+
+story_npbn = pd.Series({
+    "session": "NPBN",
+    "neurons": npbn.shape[1],
+    "rate_hz": round(1000 * npbn.mean(), 2),
+    "pc95_real": npbn_paper_pc95,
+    "pc95_shuffled": round(np.mean(npbn_null_paper_pc95), 1),
+    "pc95_pct_of_neurons": round(100 * npbn_paper_pc95 / npbn.shape[1]),
+    "pr_real": round(npbn_paper_pr, 1),
+    "pr_shuffled": round(np.mean(npbn_null_paper_pr), 1),
+    "pr_raw_real": round(npbn_raw_pr, 1),
+    "pr_raw_shuffled": round(np.mean(npbn_null_raw_pr), 1),
+})
 print(story_npbn.to_string())
+
 
 # %% NPBK -- visual patterns only, the lowest firing rate
 
 npbk = load_spontaneous("NPBK")
-story_npbk = one_session_story(npbk, "NPBK")
+
+npbk_raw_matrix = build_matrix(npbk, bin_ms=1, paper_pipeline=False)
+npbk_raw_pc95, npbk_raw_pr, npbk_raw_top = dimensions(npbk_raw_matrix)
+
+npbk_paper_matrix = build_matrix(npbk, bin_ms=1, paper_pipeline=True)
+npbk_paper_pc95, npbk_paper_pr, npbk_paper_top = dimensions(npbk_paper_matrix)
+
+npbk_null_paper_pc95 = []
+npbk_null_paper_pr = []
+npbk_null_raw_pr = []
+for repeat in range(N_SHUFFLE):
+    shuffled_counts = shuffle_neurons_apart(npbk)
+    shuffled_paper_matrix = build_matrix(shuffled_counts, bin_ms=1, paper_pipeline=True)
+    pc95, pr, top = dimensions(shuffled_paper_matrix)
+    npbk_null_paper_pc95.append(pc95)
+    npbk_null_paper_pr.append(pr)
+
+    shuffled_raw_matrix = build_matrix(shuffled_counts, bin_ms=1, paper_pipeline=False)
+    pc95, pr, top = dimensions(shuffled_raw_matrix)
+    npbk_null_raw_pr.append(pr)
+
+story_npbk = pd.Series({
+    "session": "NPBK",
+    "neurons": npbk.shape[1],
+    "rate_hz": round(1000 * npbk.mean(), 2),
+    "pc95_real": npbk_paper_pc95,
+    "pc95_shuffled": round(np.mean(npbk_null_paper_pc95), 1),
+    "pc95_pct_of_neurons": round(100 * npbk_paper_pc95 / npbk.shape[1]),
+    "pr_real": round(npbk_paper_pr, 1),
+    "pr_shuffled": round(np.mean(npbk_null_paper_pr), 1),
+    "pr_raw_real": round(npbk_raw_pr, 1),
+    "pr_raw_shuffled": round(np.mean(npbk_null_raw_pr), 1),
+})
 print(story_npbk.to_string())
 
-# %% NPBM -- tactile and visual patterns in one session
+
+# %% NPBM -- tactile and visual patterns in one session, 1600 trials
 
 npbm = load_spontaneous("NPBM")
-story_npbm = one_session_story(npbm, "NPBM")
+
+npbm_raw_matrix = build_matrix(npbm, bin_ms=1, paper_pipeline=False)
+npbm_raw_pc95, npbm_raw_pr, npbm_raw_top = dimensions(npbm_raw_matrix)
+
+npbm_paper_matrix = build_matrix(npbm, bin_ms=1, paper_pipeline=True)
+npbm_paper_pc95, npbm_paper_pr, npbm_paper_top = dimensions(npbm_paper_matrix)
+
+npbm_null_paper_pc95 = []
+npbm_null_paper_pr = []
+npbm_null_raw_pr = []
+for repeat in range(N_SHUFFLE):
+    shuffled_counts = shuffle_neurons_apart(npbm)
+    shuffled_paper_matrix = build_matrix(shuffled_counts, bin_ms=1, paper_pipeline=True)
+    pc95, pr, top = dimensions(shuffled_paper_matrix)
+    npbm_null_paper_pc95.append(pc95)
+    npbm_null_paper_pr.append(pr)
+
+    shuffled_raw_matrix = build_matrix(shuffled_counts, bin_ms=1, paper_pipeline=False)
+    pc95, pr, top = dimensions(shuffled_raw_matrix)
+    npbm_null_raw_pr.append(pr)
+
+story_npbm = pd.Series({
+    "session": "NPBM",
+    "neurons": npbm.shape[1],
+    "rate_hz": round(1000 * npbm.mean(), 2),
+    "pc95_real": npbm_paper_pc95,
+    "pc95_shuffled": round(np.mean(npbm_null_paper_pc95), 1),
+    "pc95_pct_of_neurons": round(100 * npbm_paper_pc95 / npbm.shape[1]),
+    "pr_real": round(npbm_paper_pr, 1),
+    "pr_shuffled": round(np.mean(npbm_null_paper_pr), 1),
+    "pr_raw_real": round(npbm_raw_pr, 1),
+    "pr_raw_shuffled": round(np.mean(npbm_null_raw_pr), 1),
+})
 print(story_npbm.to_string())
 
-# %% NPBO -- tactile patterns, onsets confirmed against the LFP artifacts
+
+# %% NPBO -- tactile patterns, onsets confirmed against the LFP artifacts (0.4 ms)
 
 npbo = load_spontaneous("NPBO")
-story_npbo = one_session_story(npbo, "NPBO")
+
+npbo_raw_matrix = build_matrix(npbo, bin_ms=1, paper_pipeline=False)
+npbo_raw_pc95, npbo_raw_pr, npbo_raw_top = dimensions(npbo_raw_matrix)
+
+npbo_paper_matrix = build_matrix(npbo, bin_ms=1, paper_pipeline=True)
+npbo_paper_pc95, npbo_paper_pr, npbo_paper_top = dimensions(npbo_paper_matrix)
+
+npbo_null_paper_pc95 = []
+npbo_null_paper_pr = []
+npbo_null_raw_pr = []
+for repeat in range(N_SHUFFLE):
+    shuffled_counts = shuffle_neurons_apart(npbo)
+    shuffled_paper_matrix = build_matrix(shuffled_counts, bin_ms=1, paper_pipeline=True)
+    pc95, pr, top = dimensions(shuffled_paper_matrix)
+    npbo_null_paper_pc95.append(pc95)
+    npbo_null_paper_pr.append(pr)
+
+    shuffled_raw_matrix = build_matrix(shuffled_counts, bin_ms=1, paper_pipeline=False)
+    pc95, pr, top = dimensions(shuffled_raw_matrix)
+    npbo_null_raw_pr.append(pr)
+
+story_npbo = pd.Series({
+    "session": "NPBO",
+    "neurons": npbo.shape[1],
+    "rate_hz": round(1000 * npbo.mean(), 2),
+    "pc95_real": npbo_paper_pc95,
+    "pc95_shuffled": round(np.mean(npbo_null_paper_pc95), 1),
+    "pc95_pct_of_neurons": round(100 * npbo_paper_pc95 / npbo.shape[1]),
+    "pr_real": round(npbo_paper_pr, 1),
+    "pr_shuffled": round(np.mean(npbo_null_paper_pr), 1),
+    "pr_raw_real": round(npbo_raw_pr, 1),
+    "pr_raw_shuffled": round(np.mean(npbo_null_raw_pr), 1),
+})
 print(story_npbo.to_string())
+
 
 # %% all four side by side
 
@@ -446,5 +583,8 @@ print(everyone.to_string(index=False))
 print("\npc95_real against pc95_shuffled : is the headline metric fooled?")
 print("pr_raw_real against pr_raw_shuffled : is there structure without their")
 print("preprocessing? That pair is the one that decides the claim.")
+
+everyone.to_csv(f"{OUT_DIR}/dimensionality_summary.csv", index=False)
+print(f"\nwrote {OUT_DIR}/dimensionality_summary.csv")
 
 # %%

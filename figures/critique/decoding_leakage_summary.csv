@@ -1,0 +1,5 @@
+session,neurons,f1_sample_split,f1_sample_shuffled,f1_trial_split,f1_trial_shuffled,leak
+NPBN,61,0.981,0.496,0.634,0.508,0.359
+NPBK,40,0.984,0.508,0.536,0.505,0.446
+NPBM,62,0.994,0.503,0.61,0.508,0.389
+NPBO,36,0.986,0.5,0.603,0.498,0.381
