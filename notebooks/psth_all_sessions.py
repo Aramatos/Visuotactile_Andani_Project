@@ -7,12 +7,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from pynwb import NWBHDF5IO
 from pathlib import Path
+from utils import *
 
 os.chdir(Path(__file__).parent.parent)
 os.getcwd()
 # %%
 
-EXPERIMENTS = ["NPBI", "NPBK", "NPBM", "NPBN", "NPBO"]
+EXPERIMENTS = [ "NPBK", "NPBM", "NPBN", "NPBO"]
 
 # Short modality description per experiment (from the dataset description).
 MODALITY = {
@@ -23,10 +24,6 @@ MODALITY = {
     "NPBO": "tactile patterns",
 }
 
-BIN_S = 0.002                       # paper: 2 ms bins
-PRE_S = 0.300                       # paper: 300 ms prestimulus baseline
-POST_S = 0.600                      # patterns run 200-340 ms (Methods), so 300
-                                    # would cut off the offset response
 
 # alphabetical would put F10 before F5, so order the patterns explicitly
 STIM_ORDER = ["F5", "F10", "F20", "F∞", "vA", "vB", "vC", "vD"]
@@ -38,19 +35,18 @@ RECOMPUTE = True                   # True to re-read the nwb files from scratch
 os.makedirs(OUT_DIR, exist_ok=True)
 os.makedirs(DATA_DIR, exist_ok=True)
 
-bin_edges = np.arange(-PRE_S, POST_S + BIN_S, BIN_S)
-times = bin_edges[:-1] + BIN_S / 2
-n_bins = len(times)
 
 
 # %% processing -- every experiment in one loop, everything kept in `data`
 
-data = {}
 
+
+
+data = {}
 for exp in EXPERIMENTS:
     cache = f"{DATA_DIR}/{exp}.npz"
 
-    # NPBM is 17 GB and NPBK 6 GB, so the binning is done once and cached.
+            # NPBM is 17 GB and NPBK 6 GB, so the binning is done once and cached.
     if os.path.exists(cache) and not RECOMPUTE:
         # allow_pickle because the first caches were written with an
         # object-dtype label array; these are our own files
@@ -58,24 +54,12 @@ for exp in EXPERIMENTS:
         data[exp] = {k: stored[k] for k in stored.files}
         print(f"{exp}: loaded {cache}")
         continue
+    else:
+        units, trials = load_data(exp)
 
-    with NWBHDF5IO(f"nwb/{exp}.nwb", "r") as io:
-        nwb = io.read()
-        units = nwb.units.to_dataframe()
-        trials = nwb.trials.to_dataframe()
 
-    units_good = units[units["quality"] == "good"]
-    onsets = trials["start_time"].to_numpy()
-
-    # Name each trial by what was presented on it. Most sessions only need the
-    # modality and the pattern, e.g. "tactile/F5". NPBI is the exception: it
-    # showed visual patterns both alone and together with a tactile F5 shock,
-    # and those two have to be separate classes, so when a trial has a tactile
-    # partner the partner goes into the name as well.
-    modality = trials["modality"].astype(str)
-    stimulus = trials["stimulus"].astype(str)
-    partner = trials["tactile_with"].fillna("").astype(str)
-
+    units_good,onsets,offsets,modality,stimulus,partner=extract_data(units,trials)
+    
     labels = []
     for i in range(len(trials)):
         if partner.iloc[i] == "":
@@ -106,14 +90,21 @@ for exp in EXPERIMENTS:
     # binned spike train for every unit, aligned to every stimulus onset.
     # uint8 because a 2 ms bin never holds more than a couple of spikes, and the
     # int64 version of this array is 400 MB on the bigger sessions
-    binned_per_neuron = np.zeros((len(units_good), len(onsets), n_bins), dtype=np.uint8)
-    for row, spikes in enumerate(units_good["spike_times"]):
-        for i, onset in enumerate(onsets):
-            spikes_aligned = spikes - onset
-            spikes_in_window = spikes_aligned[(spikes_aligned >= -PRE_S)
-                                              & (spikes_aligned <= POST_S)]
-            binned_per_neuron[row, i, :] = np.histogram(spikes_in_window,
-                                                        bins=bin_edges)[0]
+
+    
+
+    pre_s=.3
+    post_s=.6
+    bin_s=0.002
+
+
+
+
+
+    bin_edges= np.arange(pre_s,post_s+bin_s,bin_s)
+    n_bins= len(bin_edges)-1
+    binned_per_neuron = get_psth(units_good,onsets,bin_edges,pre_s,post_s)
+    
 
     # per class: the unit x time heatmap (mean over that class's trials), and the
     # global mean over units in Hz
@@ -124,17 +115,17 @@ for exp in EXPERIMENTS:
     for i, cls in enumerate(classes):
         class_mask = labels == cls
         heatmaps[i] = binned_per_neuron[:, class_mask, :].mean(axis=1)
-        means[i] = heatmaps[i].mean(axis=0) / BIN_S
+        means[i] = heatmaps[i].mean(axis=0) / bin_s
         n_trials[i] = class_mask.sum()
         durations[i] = trials.loc[class_mask, "duration_s"].median()
 
     # kept per trial as well, so the trial-by-trial checks in npbi_check.py do
     # not have to re-read the nwb file
-    pop_per_trial = binned_per_neuron.mean(axis=0) / BIN_S
+    pop_per_trial = binned_per_neuron.mean(axis=0) / bin_s
 
     data[exp] = {"classes": np.array(classes), "heatmaps": heatmaps,
                  "means": means, "n_trials": n_trials, "durations": durations,
-                 "times": times, "onsets": onsets, "labels": labels,
+                  "onsets": onsets, "labels": labels,
                  "pop_per_trial": pop_per_trial,
                  "cluster_ids": units_good["cluster_id"].to_numpy()}
     np.savez_compressed(cache, **data[exp])

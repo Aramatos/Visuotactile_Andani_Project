@@ -177,9 +177,6 @@ empty_share = 100 * (npbn == 0).mean()
 print(f"NPBN spontaneous activity: {n_neurons} neurons x {n_trials} windows x {n_ms} ms")
 print(f"mean firing rate: {mean_rate:.2f} Hz")
 print(f"share of 1 ms bins that are empty: {empty_share:.1f}%")
-print("\nThat last number is the reason to be suspicious. If almost every bin is")
-print("empty, two neurons rarely have anything to correlate at 1 ms, and a flat")
-print("spectrum is what you should expect before looking.")
 
 
 # %% [ STEP 2 ] NPBN: what the shuffle actually does
