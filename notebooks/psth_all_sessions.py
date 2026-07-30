@@ -6,6 +6,11 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from pynwb import NWBHDF5IO
+from pathlib import Path
+
+os.chdir(Path(__file__).parent.parent)
+os.getcwd()
+# %%
 
 EXPERIMENTS = ["NPBI", "NPBK", "NPBM", "NPBN", "NPBO"]
 
