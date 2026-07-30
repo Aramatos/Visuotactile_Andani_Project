@@ -40,6 +40,7 @@ Steps 1-9 walk through NPBN. Then NPBK, NPBM and NPBO each get their own cell.
 # %% [ STEP 0 ] settings
 
 import os
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -64,7 +65,18 @@ N_REPEATS = 5               # paper used 50; 5 separates the two schemes cleanly
 # lives between neighbouring milliseconds. Stated here rather than hidden.
 TRIALS_PER_CLASS = 40
 
-OUT_DIR = "figures/critique"
+# Every path below hangs off the repo root, so this file runs whether the working
+# directory is the repo, the critiques folder, or wherever the VS Code
+# interactive window happens to start. That window has no __file__, hence the
+# two cases.
+if "__file__" in globals():
+    ROOT = Path(__file__).resolve().parent.parent
+else:
+    ROOT = Path.cwd()
+if ROOT.name == "critiques":
+    ROOT = ROOT.parent
+
+OUT_DIR = ROOT / "figures/critique"
 os.makedirs(OUT_DIR, exist_ok=True)
 rng = np.random.default_rng(0)
 
@@ -79,7 +91,7 @@ def load_windows(exp):
 
     Returns (spontaneous, evoked), each (trial, neuron, ms), same trial order.
     """
-    with NWBHDF5IO(f"nwb/{exp}.nwb", "r") as io:
+    with NWBHDF5IO(ROOT / "nwb" / f"{exp}.nwb", "r") as io:
         nwb = io.read()
         units = nwb.units.to_dataframe()
         trials = nwb.trials.to_dataframe()

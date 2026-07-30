@@ -41,12 +41,25 @@ their own cell, spelled out the same way, so each session has its own story.
 
 import os
 
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter1d
 from sklearn.decomposition import PCA
 from pynwb import NWBHDF5IO
+
+# Every path below hangs off the repo root, so this file runs whether the working
+# directory is the repo, the critiques folder, or wherever the VS Code
+# interactive window happens to start. That window has no __file__, hence the
+# two cases.
+if "__file__" in globals():
+    ROOT = Path(__file__).resolve().parent.parent
+else:
+    ROOT = Path.cwd()
+if ROOT.name == "critiques":
+    ROOT = ROOT.parent
 
 BASELINE_S = 0.300          # the paper's spontaneous window
 GROUP = 50                  # paper: average 50 sequential trials together
@@ -55,7 +68,7 @@ BIN_MS_LIST = [1, 5, 10, 50, 100, 300]
 N_SHUFFLE = 10
 PAPER_PC_COUNTS = [50, 27, 55, 42, 28]
 
-OUT_DIR = "figures/critique"
+OUT_DIR = ROOT / "figures/critique"
 os.makedirs(OUT_DIR, exist_ok=True)
 rng = np.random.default_rng(0)
 
@@ -68,7 +81,7 @@ rng = np.random.default_rng(0)
 
 def load_spontaneous(exp):
     """Spike counts at 1 ms in the 300 ms before every onset: (trial, neuron, ms)."""
-    with NWBHDF5IO(f"nwb/{exp}.nwb", "r") as io:
+    with NWBHDF5IO(ROOT / "nwb" / f"{exp}.nwb", "r") as io:
         nwb = io.read()
         units = nwb.units.to_dataframe()
         trials = nwb.trials.to_dataframe()

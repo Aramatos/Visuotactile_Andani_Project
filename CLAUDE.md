@@ -127,7 +127,13 @@ and clever.
 ```
 
 `conda run -n neural_analysis python` swallows stdout here — use the interpreter
-path directly.
+path directly. Add `MPLBACKEND=Agg` when running headless.
+
+Every critique file resolves its paths from a `ROOT` constant computed at the top
+of the file, so it runs from the repo root, from `critiques/`, or from the VS Code
+interactive window (which has no `__file__`). **Don't add `os.chdir` to fix a path
+problem** — it moves the process into `critiques/` and breaks `ROOT / "nwb"` for
+everything downstream. Use `ROOT / ...` instead.
 
 Gotchas:
 - `figures/critique/dimensionality.csv` has a `kind` column whose values are

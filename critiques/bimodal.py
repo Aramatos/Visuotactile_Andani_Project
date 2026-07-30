@@ -47,6 +47,7 @@ Steps 1-8 walk through NPBI, which is the only session this critique can use.
 # %% [ STEP 0 ] settings
 
 import os
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -72,7 +73,19 @@ WINDOWS = {
 
 N_FOLDS = 5
 N_SHUFFLE = 20
-OUT_DIR = "figures/critique"
+
+# Every path below hangs off the repo root, so this file runs whether the working
+# directory is the repo, the critiques folder, or wherever the VS Code
+# interactive window happens to start. That window has no __file__, hence the
+# two cases.
+if "__file__" in globals():
+    ROOT = Path(__file__).resolve().parent.parent
+else:
+    ROOT = Path.cwd()
+if ROOT.name == "critiques":
+    ROOT = ROOT.parent
+
+OUT_DIR = ROOT / "figures/critique"
 os.makedirs(OUT_DIR, exist_ok=True)
 rng = np.random.default_rng(0)
 
@@ -84,7 +97,7 @@ rng = np.random.default_rng(0)
 
 def load_session(exp):
     """The good units and the trials table, straight out of the NWB file."""
-    with NWBHDF5IO(f"nwb/{exp}.nwb", "r") as io:
+    with NWBHDF5IO(ROOT / "nwb" / f"{exp}.nwb", "r") as io:
         nwb = io.read()
         units = nwb.units.to_dataframe()
         trials = nwb.trials.to_dataframe()
@@ -313,11 +326,13 @@ print(f"best single neuron (#{best_neuron})            : "
       f"{single_neuron_scores[best_neuron]:.3f}")
 print(f"median single neuron                     : "
       f"{np.median(single_neuron_scores):.3f}")
-print(f"neurons at or above the population score : "
-      f"{(single_neuron_scores >= real_accuracy).sum()}")
-print("\nIf the population beats every neuron, their Fig 2E reading holds for")
-print("this session. If single neurons match it, the population framing is")
-print("decoration on an effect that is visible one neuron at a time.")
+print(f"shuffled-label level                     : {shuffled_mean:.3f}")
+print("\nTheir Fig 2E reading -- population succeeds where single neurons fail --")
+print("needs the population number to be clearly above both the single-neuron")
+print("distribution AND its own shuffled null. If the population score is itself")
+print("at the shuffled level, this panel is not comparing a success against a")
+print("failure; it is comparing two failures, and neither ranking means")
+print("anything.")
 
 
 # %% [ STEP 8 ] NPBI: the figure
@@ -348,8 +363,8 @@ def plot_bimodal(psth_times_labelled, psth_rate_labelled, psth_times_corrected,
             label="visual alone, no touch")
     ax.axhline(chance_level, color="#7b8794", lw=1, ls="--")
     ax.axhline(shuffled_level, color="#c0392b", lw=1, ls=":")
-    ax.text(len(modulation) - 0.5, shuffled_level, " shuffled", fontsize=8,
-            color="#c0392b", va="center")
+    ax.text(0.02, shuffled_level, "shuffled / chance", fontsize=8,
+            color="#c0392b", va="bottom", ha="left", transform=ax.get_yaxis_transform())
     ax.set_xticks(positions)
     ax.set_xticklabels(modulation.window, rotation=40, ha="right", fontsize=8)
     ax.set_ylabel("visual pattern decoding")
@@ -404,7 +419,22 @@ print(summary.to_string())
 summary.to_frame().T.to_csv(f"{OUT_DIR}/bimodal_summary.csv", index=False)
 print(f"\nwrote {OUT_DIR}/bimodal_summary.csv")
 
-print("""
+print(f"""
+IS THE NEGATIVE TRUSTWORTHY?
+
+  A null result is only worth reading if the same machinery can find something
+  it should find. It can: the identical decoder, on the identical trials, in the
+  identical window, separates +tactile from -tactile at {trivial_accuracy:.3f}
+  against a chance level of 0.500. The population vectors, the cross-validation
+  and the classifier are all working. What they do not find is any trace of
+  WHICH visual pattern accompanied the shock.
+
+  The honest caveat in the other direction: this is a trial-level test, and the
+  paper's effect was measured after averaging 50 trials, which raises
+  signal-to-noise a great deal. A small true effect could hide here. What the
+  averaging cannot do is survive critique D's objection -- averaging 50
+  SEQUENTIAL trials ties every data point to a stretch of session time.
+
 WHAT THIS SUPPORTS
 
   Only a within-NPBI statement. The contrast is immune to the session's constant
