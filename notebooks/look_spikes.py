@@ -4,10 +4,13 @@ import matplotlib.pyplot as plt
 from pynwb import NWBHDF5IO
 from sklearn.decomposition import PCA
 
+from pathlib import Path
 
-
+os.chdir(Path(__file__).parent.parent)
+os.getcwd()
+# %%
 # open an nwb file and grab the units and the stimulus trials
-with NWBHDF5IO("nwb/NPBK.nwb", "r") as io:
+with NWBHDF5IO("nwb/NPBI.nwb", "r") as io:
     nwb = io.read()
     print(nwb.units)
     units = nwb.units.to_dataframe()
@@ -43,3 +46,5 @@ ax.set_title(f"first stimulus  ({first['modality']} {first['stimulus']})")
 ax.legend()
 
 plt.show()
+
+# %%
