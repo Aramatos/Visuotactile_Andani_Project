@@ -171,6 +171,14 @@ print(f"PCs for 95% variance, shuffled   : {pc95_shuffled}")
 print(f"participation ratio, real        : {pr_real:.1f}")
 print(f"participation ratio, shuffled    : {pr_shuffled:.1f}")
 
+# something varies from trial to trial that moves many neurons together, rather than each neuron just having its own independent count noise.
+# participation ratio shuffled is similar to what is expected for flat.
+'''
+What "flat" means concretely. PCA’s eigenvalues are just the variances along a set of orthogonal directions in neuron-space, sorted largest to smallest. "Flat" means those variances are all roughly the same size — no direction stands out. Geometrically, the cloud of population activity (one point per trial, in 62-neuron space) looks like a round blob, equally spread in every direction
+The fact that the real participation ratio is much lower than the shuffled one means: A concentrated, low-dimensional spectrum is equally consistent with several different stories, and PR can't distinguish them:
+- genuine stimulus-driven population coding (different patterns push the population along different directions — encouraging, this is the "real signal" reading)
+- slow session drift or state changes
+'''
 
 
 # %%
