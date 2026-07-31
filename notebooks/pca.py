@@ -31,7 +31,7 @@ units, trials = load_data("NPBM")
 units_good,onsets,offsets,modality,labels,partner = extract_data(units,trials)
 
 
-bin_edges = (0,0.3)
+bin_edges = (0,0.050)
 
 psth_all_trials = np.zeros( (len(onsets),(len(units_good))), dtype=np.uint8)
 
@@ -60,12 +60,17 @@ print(psth_tactile_trials.shape)
 print(psth_visual_trials.shape)
 pca_all = PCA(n_components=3)
 pca_all_scores = pca_all.fit_transform(psth_all_trials)
+print(pca_all.explained_variance_)
+
+
 
 pca_tactile = PCA(n_components=3)
 pca_tactile_scores = pca_tactile.fit_transform(psth_tactile_trials)
+print(pca_tactile.explained_variance_)
 
 pca_visual = PCA(n_components=3)
 pca_visual_scores = pca_visual.fit_transform(psth_visual_trials)
+print(pca_visual.explained_variance_)
 
 # %%
 fig = go.Figure(data=[go.Scatter3d(
@@ -84,7 +89,7 @@ fig = go.Figure(data=[go.Scatter3d(
     y=pca_tactile_scores[:,1],
     z=pca_tactile_scores[:,2],
     mode='markers',
-    marker=dict(size=2 color=[color_map[label] for label in labels_tactile.values]),
+    marker=dict(size=2, color=[color_map[label] for label in labels_tactile.values]),
     text=labels_tactile.values
 )])
 fig.update_layout(title='PCA Tactile Trials', scene=dict(xaxis_title='PC1', yaxis_title='PC2', zaxis_title='PC3'))
