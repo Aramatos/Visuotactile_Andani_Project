@@ -1,0 +1,5 @@
+Each cell is that unit's weight in the optimal linear readout for that discriminant axis — not simply "how differently this neuron fires between conditions," but how much it contributes once reliability (low trial-to-trial noise) and shared correlations with other units are accounted for, so a large weight can come from a small but consistent difference and a small weight can hide a large but noisy one.
+it would say the discrimination between conditions is distributed across the population rather than concentrated in a few informative cells.
+So "it's all speckled red/blue, nothing looks blank" is consistent with two very different underlying situations:
+most of the 62 units genuinely carrying comparable, non-trivial weight (real dense code), or
+a small number of units with real weight and the rest near-zero, but stretched by the color scale into looking similarly saturated
