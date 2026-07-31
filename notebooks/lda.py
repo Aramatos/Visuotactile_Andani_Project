@@ -120,17 +120,58 @@ percent_tactile = 100 * lda_2.explained_variance_ratio_
 percent_visual = 100 * lda_3.explained_variance_ratio_
 
 axis_titles_tactile = [
-    f"LD1 (1st discriminant) — {percent_tactile[0]:.1f}% of class separation",
-    f"LD2 (2nd discriminant) — {percent_tactile[1]:.1f}%",
-    f"LD3 (3rd discriminant) — {percent_tactile[2]:.1f}%",
+    f"LD1  — {percent_tactile[0]:.1f}% ",
+    f"LD2  — {percent_tactile[1]:.1f}%",
+    f"LD3  — {percent_tactile[2]:.1f}%",
 ]
 axis_titles_visual = [
-    f"LD1 (1st discriminant) — {percent_visual[0]:.1f}% of class separation",
-    f"LD2 (2nd discriminant) — {percent_visual[1]:.1f}%",
-    f"LD3 (3rd discriminant) — {percent_visual[2]:.1f}%",
+    f"LD1  — {percent_visual[0]:.1f}% ",
+    f"LD2  — {percent_visual[1]:.1f}%",
+    f"LD3  — {percent_visual[2]:.1f}%",
 ]
 
 # %%
+
+
+
+traces_modality = []
+
+for row_index, this_modality in enumerate(classes_modality):
+    is_this_class = modality.values == this_modality
+    scores_this_class = x_new[is_this_class, 0]
+    centroid_this_class = centroids_lda_1[row_index, 0]
+
+    n_trials_this_class = len(scores_this_class)
+    jitter = rng.uniform(-0.15, 0.15, size=n_trials_this_class)
+    y_this_class = row_index + jitter
+
+    cloud_trace = go.Scatter(
+        x=scores_this_class,
+        y=y_this_class,
+        mode="markers",
+        name=f"{this_modality} trials",
+        marker=dict(color=modality_color_map[this_modality], size=4, opacity=0.15),
+    )
+    centroid_trace = go.Scatter(
+        x=[centroid_this_class],
+        y=[row_index],
+        mode="markers",
+        name=f"{this_modality} centroid",
+        marker=dict(color=modality_color_map[this_modality], size=18, opacity=1.0,
+                    line=dict(color="black", width=3)),
+    )
+
+    traces_modality.append(cloud_trace)
+    traces_modality.append(centroid_trace)
+
+fig_modality = go.Figure(data=traces_modality)
+fig_modality.update_layout(
+    title="NPBM tactile vs visual — the single LDA axis (in-sample)",
+    xaxis_title="LD1 (the only discriminant axis) — 100% by construction",
+    yaxis=dict(tickmode="array", tickvals=[0, 1], ticktext=classes_modality,
+               title="vertical jitter only — carries no information"),
+)
+fig_modality.show()
 # Tactile: the four stimulus patterns in the full 3D discriminant space.
 # Two traces per class — the trial cloud at opacity 0.15, the centroid at 1.0.
 # The faint cloud is the whole point: at full opacity 200 dots per class occlude
@@ -225,55 +266,9 @@ fig_visual.update_layout(
 )
 fig_visual.show()
 
-# %%
-# Modality: 2 classes, so LDA returns exactly ONE axis (n_classes - 1 = 1) and
-# there is no second axis to plot against. Each class gets its own horizontal
-# band, and the vertical spread within a band is random jitter added here purely
-# so that 800 dots do not stack into one opaque line. Only the x position is data;
-# the y position carries nothing.
+
 rng = np.random.default_rng(0)
 
-traces_modality = []
-
-for row_index, this_modality in enumerate(classes_modality):
-    is_this_class = modality.values == this_modality
-    scores_this_class = x_new[is_this_class, 0]
-    centroid_this_class = centroids_lda_1[row_index, 0]
-
-    n_trials_this_class = len(scores_this_class)
-    jitter = rng.uniform(-0.15, 0.15, size=n_trials_this_class)
-    y_this_class = row_index + jitter
-
-    cloud_trace = go.Scatter(
-        x=scores_this_class,
-        y=y_this_class,
-        mode="markers",
-        name=f"{this_modality} trials",
-        marker=dict(color=modality_color_map[this_modality], size=4, opacity=0.15),
-    )
-    centroid_trace = go.Scatter(
-        x=[centroid_this_class],
-        y=[row_index],
-        mode="markers",
-        name=f"{this_modality} centroid",
-        marker=dict(color=modality_color_map[this_modality], size=18, opacity=1.0,
-                    line=dict(color="black", width=3)),
-    )
-
-    traces_modality.append(cloud_trace)
-    traces_modality.append(centroid_trace)
-
-fig_modality = go.Figure(data=traces_modality)
-# The "100%" in the x title is not a result — with one axis it has nowhere else
-# to go. Read the separation off the gap between the two solid centroids, in
-# units of within-class SD.
-fig_modality.update_layout(
-    title="NPBM tactile vs visual — the single LDA axis (in-sample)",
-    xaxis_title="LD1 (the only discriminant axis) — 100% by construction",
-    yaxis=dict(tickmode="array", tickvals=[0, 1], ticktext=classes_modality,
-               title="vertical jitter only — carries no information"),
-)
-fig_modality.show()
 
 # %%
 
@@ -383,4 +378,16 @@ print("  modality vs tactile:", principal_angles_modality_tactile)
 print("  modality vs visual :", principal_angles_modality_visual)
 print("  tactile  vs visual :", principal_angles_tactile_visual)
 
+# %%
+
+print(np.argsort(lda_1.scalings_[:,0]))
+print(np.argsort(lda_2.scalings_[:,0]))
+print(np.argsort(lda_2.scalings_[:,1]))
+print(np.argsort(lda_2.scalings_[:,2]))
+print(np.argsort(lda_3.scalings_[:,0]))
+print(np.argsort(lda_3.scalings_[:,1]))
+print(np.argsort(lda_3.scalings_[:,2]))
+
+# %%
+print(np.argsort(-lda_1.scalings_[:,0]-lda_2.scalings_[:,0]))
 # %%

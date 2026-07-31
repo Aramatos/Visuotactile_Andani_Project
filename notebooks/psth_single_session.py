@@ -13,8 +13,13 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from pynwb import NWBHDF5IO
+from pathlib import Path
+from utils import *
+import os
+os.chdir(Path(__file__).parent.parent)
+os.getcwd()
 
-EXP = "NPBO"
+EXP = "NPBM"
 
 
 # alphabetical would put F10 before F5, so name the order explicitly
@@ -62,7 +67,7 @@ print(f"{len(classes)} classes: {classes}")
 
 
 # %% bin every unit around every onset
-BIN_S = 0.002               # paper: 2 ms bins
+BIN_S = 0.010              # paper: 2 ms bins
 PRE_S = 0.300               # paper: 300 ms prestimulus baseline
 POST_S = 0.600              # patterns run 200-340 ms, so 300 would cut the offset
 
@@ -101,12 +106,14 @@ ymax = 1.15 * np.max(means)                 # one y scale for the mean traces
 
 # %% plot: one column per class, heatmap over the population mean
 
-fig, axes = plt.subplots(2, len(classes), figsize=(3.6 * len(classes), 6),
+fig, axes = plt.subplots(2, 4, figsize=(3.6 * len(classes), 6),
                          height_ratios=[3, 1], sharex=True, squeeze=False)
 
 for i, cls in enumerate(classes):
-    top = axes[0, i]
-    bottom = axes[1, i]
+    k = i // 4
+    j = i % 4
+    top = axes[0, j]
+    bottom = axes[1, j]
 
     image = top.imshow(heatmaps[i], aspect="auto", cmap="magma", vmin=0, vmax=vmax,
                        extent=[times[0], times[-1], len(units_good), 0])
